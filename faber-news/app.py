@@ -1,7 +1,21 @@
 from flask import Flask, url_for, session, redirect, escape, request
 
 app = Flask(__name__)
-app.secret_key = 'bBL\xad\x99\x14m\xd3\x0f\xb4@?B?nh$\x9d\xf6\x07&?_h\xd3'
+app.config.from_object(__name__)
+
+app.config.update(dict(
+	DATABASE=os.path.join(app.root_path, 'faber-news.db'),
+	SECRET_KEY='bBL\xad\x99\x14m\xd3\x0f\xb4@?B?nh$\x9d\xf6\x07&?_h\xd3',
+	USERNAME='simoes',
+	PASSWORD='simoes'
+))
+app.config.from_envvar('FABER-NEWS_SETTINGS', silent=True)
+
+
+def connect_db():
+	rv = sqlite3.connect(app.config['DATABASE'])
+	rv.row_factory = sqlite3.Row
+	return rv
 
 
 @app.route('/')
