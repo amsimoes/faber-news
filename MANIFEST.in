@@ -1,3 +1,0 @@
-graft faber-news/templates
-graft faber-news/static
-include faber-news/schema.sql
