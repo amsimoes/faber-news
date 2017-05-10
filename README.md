@@ -7,8 +7,9 @@ Hacker news clone programming challenge for FaberVentures technical interview
 * `# pip3 install -r requirements.txt`
 
 # Usage
-* from root folder (faber-news): `$ cd faber_news/faber_news/`
-* `$ export FLASK_APP=app.py`
-* `$ python3 -m flask run`
+From root folder (faber-news): 
+1. `$ cd faber_news/faber_news/`
+2. `$ export FLASK_APP=app.py`
+3. `$ python3 -m flask run`
 
 And it will be running at `localhost:5000`
