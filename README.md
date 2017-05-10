@@ -1,6 +1,8 @@
 # faber-news
 
-Hacker news clone programming challenge for FaberVentures technical interview
+Hacker news clone programming challenge for FaberVentures technical interview.
+
+Made with: Flask backend + Jinja2 templating HTML/CSS + Sqlite3 DB
 
 # Configuration
 * `cd faber_news`
