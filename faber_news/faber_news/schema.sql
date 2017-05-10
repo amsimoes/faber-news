@@ -5,8 +5,8 @@ create table articles (
 	id integer primary key autoincrement,
 	title text not null,
 	body text not null,
-	upvotes int default 0,
-	downvotes int default 0
+	upvotes integer default 0,
+	downvotes integer default 0
 );
 
 create table users (

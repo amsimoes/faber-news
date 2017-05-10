@@ -2,6 +2,7 @@ from flask import Flask, url_for, session, redirect, escape, request, g, abort, 
 import os
 import sqlite3
 import bcrypt
+import sys
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -13,10 +14,14 @@ app.config.update(dict(
 app.config.from_envvar('FABER_NEWS_SETTINGS', silent=True)
 
 def init_db():
-	db = get_db()
-	with app.open_resource('schema.sql', mode='r') as f:
-		db.cursor().executescript(f.read())
-	db.commit()
+	try:
+		db = get_db()
+		with app.open_resource('schema.sql', mode='r') as f:
+			db.cursor().executescript(f.read())
+		db.commit()
+	except:
+		print('Error initializating DB...')
+		db.rollback()
 
 @app.cli.command('initdb')
 def initdb_command():
@@ -24,19 +29,29 @@ def initdb_command():
 	print("SQLite3 Database Initialized!")
 
 def connect_db():
-	rv = sqlite3.connect(app.config['DATABASE'])
-	rv.row_factory = sqlite3.Row
-	return rv
+	try:
+		rv = sqlite3.connect(app.config['DATABASE'])
+		rv.row_factory = sqlite3.Row
+		return rv
+	except:
+		print('Error connecting to DB...')
+		return None
 
 def get_db():
-	if not hasattr(g, 'sqlite.db'):
-		g.sqlite_db = connect_db()
-	return g.sqlite_db
+	try:
+		if not hasattr(g, 'sqlite.db'):
+			g.sqlite_db = connect_db()
+		return g.sqlite_db
+	except:
+		print('Error getting DB...')
+		return None
 
 @app.teardown_appcontext
 def close_db(error):
 	if hasattr(g, 'sqlite.db'):
 		g.sqlite_db.close()
+		session.pop('logged_in', None)
+
 
 ########### VIEWS ###########
 
@@ -44,27 +59,31 @@ def close_db(error):
 def show_articles():
 	try:
 		db = get_db()
-		cur = db.execute('SELECT title, text FROM articles ORDER BY upvotes DESC')
+		cur = db.execute('SELECT * FROM articles ORDER BY upvotes DESC')
 		articles = cur.fetchall()
+		for a in articles:
+			print(a['title'], str(a['upvotes']))
 	except:
+		print ("Unexpected error:", sys.exc_info()[0])
 		return 'Error connecting with DB!'
 	return render_template('show_articles.html', articles=articles)
 
 
-@app.route('/add', methods=['POST'])
+@app.route('/add', methods=['GET', 'POST'])
 def add_article():
-	if not session.get('logged_in'):
-		abort(401)
-	try:
-		db = get_db()
-		db.execute('INSERT into articles (title, text, upvotes, downvotes) VALUES (?, ?, ?, ?)',
-			[request.form['title'], request.form['title'], 0, 0])
-		db.commit()
-	except:
-		db.rollback()
-		return 'Error connecting with DB!'
-	flash('New article published with sucess!')
-	return redirect(url_for('show_articles'))
+	if request.method == 'POST':
+		try:
+			db = get_db()
+			db.execute('INSERT into articles (title, body, upvotes, downvotes) VALUES (?, ?, ?, ?)',
+				[request.form['title'], request.form['body'], 0, 0])
+			db.commit()
+			flash('New article published with sucess!')
+			return redirect(url_for('show_articles'))
+		except:
+			db.rollback()
+			return 'Error connecting with DB!'
+	else:
+		return render_template('submit_article.html', error=None)
 
 
 ########### REGISTER / LOGIN / LOGOUT ###########
@@ -74,31 +93,29 @@ def register():
 	if request.method == 'POST':
 		email = request.form['email']
 		username = request.form['username']
-		try:
-			db = get_db()
-			cur = db.execute('SELECT * FROM users WHERE email = ?', [email, one=True])
-			if cur is None:
-				cur = db.execute('SELECT * FROM users WHERE username = ?',, [username, one=True])
-				if cur is None:
-					# Proceeds registration
-					password = request.form['password']
-					encrypted_pw = bcrypt.hashpw(password, bcrypt.gensalt(10))
-					try:
-						cur = db.execute('INSERT INTO users(username, email, password) VALUES (?, ?, ?)', [username, email, encrypted_pw])
-						db.commit()
-						flash('Signed up with sucess!')
-						return redirect(url_for('show_articles'))
-					except:
-						db.rollback()
-						return render_template('register.html', error='Error connecting with DB!')
-				else:
-					return render_template('register.html', error="Username already in use.")
+		db = get_db()
+		cur = db.execute('SELECT * FROM users WHERE email = ?', [email])
+		print("len cur.fetchall = " + str(len(cur.fetchall())))
+		if len(cur.fetchall()) == 0:
+			cur = db.execute('SELECT * FROM users WHERE username = ?', [username])
+			if len(cur.fetchall()) == 0:
+				# Proceeds registration
+				password = request.form['password']
+				encrypted_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(10))
+				try:
+					cur = db.execute('INSERT INTO users(username, email, password) VALUES (?, ?, ?)', [username, email, encrypted_pw])
+					db.commit()
+					flash('Signed up with sucess!')
+					return redirect(url_for('show_articles'))
+				except:
+					db.rollback()
+					return render_template('register.html', error='Error connecting with DB!')
 			else:
-				return render_template('register.html', error="Email already in use.")
-		except:
-			return render_template('register.html', error='Error connecting with DB!')
+				return render_template('register.html', error="Username already in use.")
+		else:
+			return render_template('register.html', error="Email already in use. Please try again.")
 	else:
-		return render_template('register.html', error="Error! Should be GET not POST...")
+		return render_template('register.html', error=None)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -106,20 +123,21 @@ def login():
 	error = None
 	if request.method == 'POST':
 		username = request.form['username']
-		password = request.form['password']
-		try:
-			db = get_db()
-			cur = db.execute('SELECT password FROM users WHERE username = ?', [username, one=True])
-			if cur is None:
-				return render_template('login.html', error='Username not found. Please sign up first!')
+		password = request.form['password'].encode('utf-8')
+		db = get_db()
+		cur = db.execute('SELECT * FROM users WHERE username = ?', [username])
+		rv = cur.fetchall()
+		if len(rv) == 0:
+			return render_template('login.html', error='Username not found. Please sign up first!')
+		else:
+			if rv[0][3] == bcrypt.hashpw(password, rv[0][3]):
+				session['logged_in'] = True
+				flash('Logged in with success!')
+				return redirect(url_for('show_articles'))
 			else:
-				data = cur.fetchall()
-				print(data)
-				return render_template('login.html', error='testing password')
-		except:
-			return render_template('login.html', error='Error connecting with DB!')
+				return render_template('login.html', error='Wrong credentials')
 	else:
-		return render_template('login.html', error="Error! Should be GET not POST...")
+		return render_template('login.html', error=None)
 
 
 @app.route('/logout')
@@ -127,3 +145,26 @@ def logout():
 	session.pop('logged_in', None)
 	flash('You were logged out')
 	return redirect(url_for('show_articles'))
+
+
+@app.route('/upvote/<article_id>')
+def upvote(article_id):
+	try:
+		db = get_db()
+		cur = db.execute('UPDATE articles SET upvotes = upvotes + 1 WHERE id = ?', [article_id])
+		db.commit()
+		flash('Article upvoted!')
+		return redirect(url_for('show_articles'))
+	except:
+		return redirect(url_for('show_articles'), error="Error connecting with DB!")
+
+
+@app.route('/downvote/<article_id>')
+def downvote(article_id):
+	try:
+		db = get_db()
+		cur = db.execute('UPDATE articles SET downvotes = downvotes + 1 WHERE id = ?', [article_id])
+		flash('Article downvoted!')
+		return redirect(url_for('show_articles'))
+	except:
+		return redirect(url_for('show_articles'), error="Error connecting with DB!")

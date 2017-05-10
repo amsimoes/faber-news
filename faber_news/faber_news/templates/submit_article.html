@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block body %}
+{% if session.logged_in %}
+  <form action="{{ url_for('add_article') }}" method=post class=add-article>
+    <dl>
+      <dt>Title:
+      <dd><input type=text size=30 name=title>
+      <dt>Body:
+      <dd><textarea name=body rows=5 cols=40></textarea>
+      <dd><input type=submit value=Share>
+    </dl>
+  </form>
+  <a href="{{ url_for('show_articles') }}">Back</a>
+{% endif %}
+{% endblock %}
