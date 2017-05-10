@@ -176,3 +176,19 @@ def downvote(article_id):
 	else:
 		flash('You must be logged in to vote.')
 		return redirect(url_for('show_articles'))
+
+
+@app.route('/forgot_password', methods=['POST', 'GET'])
+def forgot_password():
+	if request.method == 'POST':
+		db = get_db()
+		username = request.form['username']
+		email = request.form['email']
+		cur = db.execute('SELECT password FROM users WHERE username = ? AND email = ?', [username, email])
+		if len(cur.fetchall()) != 0:
+			flash('Password found and sent to your email.')
+			return render_template('login.html')
+		else:
+			return render_template('forgot_password.html', error="No account found with those credentials. Try again.")
+	else:
+		return render_template('forgot_password.html', error=None)
