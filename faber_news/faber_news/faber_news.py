@@ -61,8 +61,6 @@ def show_articles():
 		db = get_db()
 		cur = db.execute('SELECT * FROM articles ORDER BY upvotes DESC')
 		articles = cur.fetchall()
-		for a in articles:
-			print(a['title'], str(a['upvotes']))
 	except:
 		print ("Unexpected error:", sys.exc_info()[0])
 		return 'Error connecting with DB!'
@@ -186,9 +184,26 @@ def forgot_password():
 		email = request.form['email']
 		cur = db.execute('SELECT password FROM users WHERE username = ? AND email = ?', [username, email])
 		if len(cur.fetchall()) != 0:
-			flash('Password found and sent to your email.')
+			flash('Success! A password reset link was sent to your email because we hashed and salted your previous password :)')
 			return render_template('login.html')
 		else:
 			return render_template('forgot_password.html', error="No account found with those credentials. Try again.")
 	else:
 		return render_template('forgot_password.html', error=None)
+
+
+@app.route('/article/<article_id>', methods=['GET'])
+def view_article(article_id):
+	if request.method == 'GET':
+		db = get_db()
+		cur = db.execute('SELECT title, body, upvotes, downvotes FROM articles WHERE id = ?', [article_id])
+		data = cur.fetchall()
+		#print(cur.fetchall()[0]['title'])
+		if len(data) != 0:
+			print ("data = " + data[0]['title'])
+			return render_template('view_article.html', title=data[0]['title'], body=data[0]['body'], id=article_id, upvotes=data[0]['upvotes'], downvotes=data[0]['downvotes'])
+		else:
+			flash('No such article exists.')
+			return redirect(url_for('show_articles'))
+	else:
+		return "ok"

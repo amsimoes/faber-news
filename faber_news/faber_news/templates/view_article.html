@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+{% block body %}
+
+<h2>{{ title }}</h2>
+<p> {{ body }}</p>
+
+<a href='{{ url_for('upvote', article_id=id) }}'>&#x25B2;</a> {{ upvotes }} <a href='{{ url_for('downvote', article_id=id) }}'>&#x25BC;</a> {{ downvotes }}
+<br><br>
+<a href="{{ url_for('show_articles') }}">Back</a>
+{% endblock %}
