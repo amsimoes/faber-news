@@ -128,7 +128,7 @@ def login():
 		if len(rv) == 0:
 			return render_template('login.html', error='Username not found. Please sign up first!')
 		else:
-			if rv[0][3] == bcrypt.hashpw(password, rv[0][3]):
+			if rv[0][3] == bcrypt.hashpw(password, rv[0][3].encode('utf-8')):
 				session['logged_in'] = True
 				flash('Logged in with success!')
 				return redirect(url_for('show_articles'))
