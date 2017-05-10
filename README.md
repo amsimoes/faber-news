@@ -10,4 +10,4 @@ Hacker news clone programming challenge for FaberVentures technical interview
 * `$ export FLASK_APP=app.py`
 * `$ python3 -m flask run`
 
-And it will be running `localhost:5000`
+And it will be running at `localhost:5000`
