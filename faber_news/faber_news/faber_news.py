@@ -149,22 +149,30 @@ def logout():
 
 @app.route('/upvote/<article_id>')
 def upvote(article_id):
-	try:
-		db = get_db()
-		cur = db.execute('UPDATE articles SET upvotes = upvotes + 1 WHERE id = ?', [article_id])
-		db.commit()
-		flash('Article upvoted!')
+	if session.get('logged_in'):
+		try:
+			db = get_db()
+			cur = db.execute('UPDATE articles SET upvotes = upvotes + 1 WHERE id = ?', [article_id])
+			db.commit()
+			flash('Article upvoted!')
+			return redirect(url_for('show_articles'))
+		except:
+			return render_template('show_articles.html', error="Error connecting with DB!")
+	else:
+		flash('You must be logged in to vote.')
 		return redirect(url_for('show_articles'))
-	except:
-		return redirect(url_for('show_articles'), error="Error connecting with DB!")
 
 
 @app.route('/downvote/<article_id>')
 def downvote(article_id):
-	try:
-		db = get_db()
-		cur = db.execute('UPDATE articles SET downvotes = downvotes + 1 WHERE id = ?', [article_id])
-		flash('Article downvoted!')
+	if session.get('logged_in'):
+		try:
+			db = get_db()
+			cur = db.execute('UPDATE articles SET downvotes = downvotes + 1 WHERE id = ?', [article_id])
+			flash('Article downvoted!')
+			return redirect(url_for('show_articles'))
+		except:
+			return render_template('show_articles.html', error="Error connecting with DB!")
+	else:
+		flash('You must be logged in to vote.')
 		return redirect(url_for('show_articles'))
-	except:
-		return redirect(url_for('show_articles'), error="Error connecting with DB!")

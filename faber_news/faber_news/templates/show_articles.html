@@ -2,7 +2,7 @@
 {% block body %}
   <ul class=articles>
   {% for article in articles %}
-    <li><h2>{{ article.title }}</h2> <a href='{{ url_for('upvote', article_id=article.id) }}'>&uarr;</a> {{ article.upvotes }}
+    <li><h2>{{ article.title }}</h2> <a href='{{ url_for('upvote', article_id=article.id) }}'>&uarr;</a> {{ article.upvotes }} <a href='{{ url_for('downvote', article_id=article.id) }}'>&darr;</a> {{ article.downvotes }}
   {% else %}
     <li><em>Unbelievable.  No articles here so far</em>
   {% endfor %}
